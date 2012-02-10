@@ -11,14 +11,15 @@ globalScope.msgpack.rpc = {
      * @class
      * @param {string} uri uri of websocket
      * @param {Hash} [callbacks]
-     * called when received event, notify<br>
+     * fire when receive event or notify
      * @param {String} [callbacks.event]
      * fire when receive websocket event
      * @param {String} [callbacks.notify]
      * fire when receive MessagePack notification
      * @return {Object}
      * MessagePack RPC Client Instance or undefined if error occurs
-     * @see #event:callbacks
+     * @see #event:event_callback
+     * @see #event:notify_callback
      * @example
      * (function() {
      *   function notify_callback(e) {
@@ -153,17 +154,23 @@ globalScope.msgpack.rpc = {
         that.callbacks = callbacks;
         return that;
         /**
-         * fire when received event message from a server
+         * fire when receive websocket event message
          * @name globalScope.msgpack.rpc.client#event_callback
          * @event
          * @param {Hash} e
          * @param {String} e.type type of event
-         * [close, error, message]
-         * @param {String} [e.method] method name
-         * @param {Array} [e.params] arguments array that a server defines
+         * [open, close, error]
          */
         /**
-         * fire when received response
+         * fire when receive notify message from a server
+         * @name globalScope.msgpack.rpc.client#notify_callback
+         * @event
+         * @param {Hash} e
+         * @param {String} e.method method name
+         * @param {Array} e.params arguments array
+         */
+        /**
+         * fire when receive response
          * @name globalScope.msgpack.rpc.client#responce_callback
          * @event
          * @param {Hash} r

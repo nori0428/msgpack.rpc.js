@@ -232,7 +232,7 @@ ul.inheritsList
 						<td class="attributes">&nbsp;</td>
 						<td class="nameDescription" >
 							<div class="fixedFont">
-								<b><a href="../symbols/globalScope.msgpack.rpc.client.html#constructor">globalScope.msgpack.rpc.client</a></b>(uri, event_callback)
+								<b><a href="../symbols/globalScope.msgpack.rpc.client.html#constructor">globalScope.msgpack.rpc.client</a></b>(uri, callbacks)
 							</div>
 							<div class="description">MessagePack RPC Client<br>
 <a href="http://wiki.msgpack.org/display/MSGPACK/RPC+specification">
@@ -295,7 +295,16 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#event:event_callback">event_callback</a></b>(e)
 								</div>
-								<div class="description">fire when received event message from a server</div>
+								<div class="description">fire when receive websocket event message</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#event:notify_callback">notify_callback</a></b>(e)
+								</div>
+								<div class="description">fire when receive notify message from a server</div>
 							</td>
 						</tr>
 					
@@ -304,7 +313,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 							<td class="nameDescription">
 								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#event:responce_callback">responce_callback</a></b>(r)
 								</div>
-								<div class="description">fire when received response</div>
+								<div class="description">fire when receive response</div>
 							</td>
 						</tr>
 					
@@ -323,7 +332,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 				</div>
 				
 				<div class="fixedFont">
-						<b>globalScope.msgpack.rpc.client</b>(uri, event_callback)
+						<b>globalScope.msgpack.rpc.client</b>(uri, callbacks)
 				</div>
 				
 				<div class="description">
@@ -337,6 +346,10 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 				
 				
 				<pre class="code">(function() {
+  function notify_callback(e) {
+    console.log(JSON.stringify(e));   
+  }
+
   function event_callback(e) {
     console.log(JSON.stringify(e));   
   }
@@ -350,7 +363,8 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
   }
 
   var client = new msgpack.rpc.client('ws://host:port/msgpack-rpc',
-                                      event_callback);
+                                      {'notify': notify_callback,
+                                       'event': event_callback});
   // non-block
   client.call_async({'method': 'foo',
                      'params': [-1, "string", {'key': 'val'}],
@@ -376,10 +390,22 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 								<dd>uri of websocket</dd>
 						
 							<dt>
-								<span class="light fixedFont">{Function}</span>  <b>event_callback</b>
+								<span class="light fixedFont">{Hash}</span>  <b>callbacks</b>
 								<i>Optional</i>
 							</dt>
-								<dd>called when received event<br></dd>
+								<dd>fire when receive event or notify</dd>
+						
+							<dt>
+								<span class="light fixedFont">{String}</span>  <b>callbacks.event</b>
+								<i>Optional</i>
+							</dt>
+								<dd>fire when receive websocket event</dd>
+						
+							<dt>
+								<span class="light fixedFont">{String}</span>  <b>callbacks.notify</b>
+								<i>Optional</i>
+							</dt>
+								<dd>fire when receive MessagePack notification</dd>
 						
 						</dl>
 					
@@ -400,6 +426,8 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 						<dt class="heading">See:</dt>
 						
 							<dd><a href="#event:event_callback">#event:event_callback</a></dd>
+						
+							<dd><a href="#event:notify_callback">#event:notify_callback</a></dd>
 						
 						</dl>
 					
@@ -499,7 +527,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 					
 					</div>
 					<div class="description">
-						fire when received event message from a server
+						fire when receive websocket event message
 						
 						
 					</div>
@@ -521,19 +549,55 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 									
 								</dt>
 								<dd>type of event
-[close, error, message]</dd>
+[open, close, error]</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="event:notify_callback"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>notify_callback</b>(e)
+					
+					</div>
+					<div class="description">
+						fire when receive notify message from a server
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Hash}</span> <b>e</b>
+									
+								</dt>
+								<dd></dd>
 							
 								<dt>
 									<span class="light fixedFont">{String}</span> <b>e.method</b>
-									<i>Optional</i>
+									
 								</dt>
 								<dd>method name</dd>
 							
 								<dt>
 									<span class="light fixedFont">{Array}</span> <b>e.params</b>
-									<i>Optional</i>
+									
 								</dt>
-								<dd>arguments array that a server defines</dd>
+								<dd>arguments array</dd>
 							
 							</dl>
 						
@@ -554,7 +618,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 					
 					</div>
 					<div class="description">
-						fire when received response
+						fire when receive response
 						
 						
 					</div>
@@ -603,7 +667,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Thu Feb 09 2012 16:38:27 GMT+0900 (JST)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.3.2 on Fri Feb 10 2012 19:45:04 GMT+0900 (JST)
 		</div>
 	</body>
 </html>
