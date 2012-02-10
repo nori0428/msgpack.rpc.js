@@ -105,7 +105,7 @@ globalScope.msgpack.rpc = {
                 }
                 if (that.callbacks && typeof that.callbacks.notify === 'function' &&
                     r[0] == 2) {
-                    that.callbacks.event({'method': r[1], 'params': r[2]});
+                    that.callbacks.notify({'method': r[1], 'params': r[2]});
                 }
             }
         }
