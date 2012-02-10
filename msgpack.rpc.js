@@ -10,13 +10,21 @@ globalScope.msgpack.rpc = {
      * </a>
      * @class
      * @param {string} uri uri of websocket
-     * @param {Function} [event_callback]
-     * called when received event<br>
+     * @param {Hash} [callbacks]
+     * called when received event, notify<br>
+     * @param {String} [callbacks.event]
+     * fire when receive websocket event
+     * @param {String} [callbacks.notify]
+     * fire when receive MessagePack notification
      * @return {Object}
      * MessagePack RPC Client Instance or undefined if error occurs
-     * @see #event:event_callback
+     * @see #event:callbacks
      * @example
      * (function() {
+     *   function notify_callback(e) {
+     *     console.log(JSON.stringify(e));   
+     *   }
+     * 
      *   function event_callback(e) {
      *     console.log(JSON.stringify(e));   
      *   }
@@ -30,7 +38,8 @@ globalScope.msgpack.rpc = {
      *   }
      * 
      *   var client = new msgpack.rpc.client('ws://host:port/msgpack-rpc',
-     *                                       event_callback);
+     *                                       {'notify': notify_callback,
+     *                                        'event': event_callback});
      *   // non-block
      *   client.call_async({'method': 'foo',
      *                      'params': [-1, "string", {'key': 'val'}],
@@ -44,7 +53,7 @@ globalScope.msgpack.rpc = {
      */
     client: msgpackclient
 };
-    function msgpackclient(uri, event_callback) {
+    function msgpackclient(uri, callbacks) {
         var sock, connected = false, msgid = -1;
         var requests = {}, that = {}, unpacker = new msgpack.unpacker();
 
@@ -79,8 +88,8 @@ globalScope.msgpack.rpc = {
                 delete requests[id];
             }
         }
-        function recv_response(e) {
-            var pack = [], r, event = {};
+        function recv_message(e) {
+            var pack = [], r;
             var ui8v = new Uint8Array(e.data);
 
             for (var i = 0; i < ui8v.length; i++) {
@@ -93,17 +102,15 @@ globalScope.msgpack.rpc = {
                     requests[r[1]].callback({'error': r[2], 'result': r[3]});
                     delete requests[r[1]];
                 }
-                if (r[0] == 2) {
-                    event.type = 'message';
-                    event.method = r[1];
-                    event.params = r[2];
-                    recv_event(event);
+                if (that.callbacks && typeof that.callbacks.notify === 'function' &&
+                    r[0] == 2) {
+                    that.callbacks.event({'method': r[1], 'params': r[2]});
                 }
             }
         }
         function recv_event(e) {
-            if (typeof that.event_callback === 'function') {
-                that.event_callback(e);
+            if (that.callbacks && typeof that.callbacks.event === 'function') {
+                that.callbacks.event(e);
             }
         }
 
@@ -137,12 +144,13 @@ globalScope.msgpack.rpc = {
             return undefined;
         }
         sock.binaryType = 'arraybuffer';
-        sock.onopen = function() {
+        sock.onopen = function(e) {
             connected = true;
+            recv_event(e);
         };
         sock.onclose = sock.onerror = recv_event;
-        sock.onmessage = recv_response;
-        that.event_callback = event_callback;
+        sock.onmessage = recv_message;
+        that.callbacks = callbacks;
         return that;
         /**
          * fire when received event message from a server
