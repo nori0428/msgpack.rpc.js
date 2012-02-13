@@ -1,0 +1,7 @@
+// $Id$
+
+- see doc/index.html
+  $ git clone http://github.com/nori0428/msgpack.rpc.js
+  $ google-chrome doc/index.html
+
+have fun!
