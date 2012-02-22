@@ -23,25 +23,26 @@ globalScope.msgpack.rpc = {
      * @example
      * (function() {
      *   function notify_callback(e) {
-     *     console.log(JSON.stringify(e));   
+     *     console.log(JSON.stringify(e));
      *   }
-     * 
+     *
      *   function event_callback(e) {
-     *     console.log(JSON.stringify(e));   
+     *     console.log(JSON.stringify(e));
      *   }
-     * 
+     *
      *   function responce_callback_1(r) {
      *     console.log(JSON.stringify(r));
      *   }
-     * 
+     *
      *   function responce_callback_2(r) {
      *     console.log(JSON.stringify(r));
      *   }
-     * 
+     *
      *   var client = new msgpack.rpc.client('ws://host:port/msgpack-rpc',
      *                                       {'notify': notify_callback,
      *                                        'event': event_callback});
-     *   // non-block
+     *
+     *   // non-block call
      *   client.call_async({'method': 'foo',
      *                      'params': [-1, "string", {'key': 'val'}],
      *                      'callback': response_callback_1,
@@ -50,62 +51,98 @@ globalScope.msgpack.rpc = {
      *                      'params': [-1, "string", {'key': 'val'}],
      *                      'callback': response_callback_2,
      *                      'timeout': 10000});
+     *
+     *   // non-block notify
+     *   client.notify({method: 'foo', params: ['bar', 'baz']});
+     *
+     *   // suspend client work
+     *   client.suspend();
+     *
+     *   // resume client work if needed
+     *   client.resume();
+     *
+     *   // delete client completely
+     *   client.delete();
+     *   delete client;
      * })();
      */
     client: msgpackclient
 };
     function msgpackclient(uri, callbacks) {
-        var sock, connected = false, msgid = -1;
+        var sock, stat = 'disconnected', msgid = -1;
         var requests = {}, that = {}, unpacker = new msgpack.unpacker();
 
-        function send_request(id, rpc) {
-            var frame, pack, ui8v, timeout = 30000;
-
-            function send() {
-                if (sock.bufferedAmount == 0) {
-                    timeout = rpc.timeout || 30000;
-                    requests[id].tid = setTimeout(function() {
-                                                          timeout_request(id);
-                                                      }, timeout);
-                    sock.send(ui8v.buffer);
-                } else {
-                    setTimeout(send, 50);
-                }
-            }
-
-            requests[id] = {};
-            if (rpc.callback && typeof rpc.callback === 'function') {
-                requests[id].callback = rpc.callback;
-            }
-            frame = [0, id, rpc.method];
-            frame.push(rpc.params);
-            pack = msgpack.pack(frame);
-            ui8v = new Uint8Array(pack);
-            send();
-        }
         function timeout_request(id) {
-            if (typeof requests[id] !== 'undefined') {
-                requests[id].callback({'error': 'timeout', 'result': null});
+            if (requests[id] && typeof requests[id].callback === 'function') {
+                requests[id].callback({error: "timeout", result: null});
                 delete requests[id];
             }
         }
-        function recv_message(e) {
-            var pack = [], r;
-            var ui8v = new Uint8Array(e.data);
-
-            for (var i = 0; i < ui8v.length; i++) {
-                pack[i] = ui8v[i];
+        function send(data) {
+            if (sock.bufferedAmount == 0) {
+                sock.send(data.buffer);
+            } else {
+                setTimeout(function() {
+                               send(data);
+                           }, 1);
             }
-            unpacker.feed(pack);
-            while ((r = unpacker.unpack()) !== undefined) {
-                if (r[0] == 1 && typeof requests[r[1]] !== 'undefined') {
-                    clearTimeout(requests[r[1]].tid);
-                    requests[r[1]].callback({'error': r[2], 'result': r[3]});
-                    delete requests[r[1]];
-                }
-                if (that.callbacks && typeof that.callbacks.notify === 'function' &&
-                    r[0] == 2) {
-                    that.callbacks.notify({'method': r[1], 'params': r[2]});
+        }
+        function send_request(id, args) {
+            var frame, pack, data, timeout = 0;
+
+            requests[id] = {};
+            if (args.callback && typeof args.callback === 'function') {
+                requests[id].callback = args.callback;
+                timeout = args.timeout || 30000;
+            }
+            frame = [0, id, args.method];
+            frame.push(args.params);
+            pack = msgpack.pack(frame);
+            data = new Uint8Array(pack);
+            if (timeout > 0) {
+                requests[id].tid = setTimeout(function() {
+                                                  timeout_request(id);
+                                              }, timeout);
+            }
+            send(data);
+        }
+        function send_notify(args) {
+            var frame, pack, data;
+
+            frame = [2, args.method];
+            frame.push(args.params);
+            pack = msgpack.pack(frame);
+            data = new Uint8Array(pack);
+            send(data);
+        }
+        function recv_message(e) {
+            var chunk = [], obj, id;
+            var data = new Uint8Array(e.data);
+
+            for (var i = 0; i < data.length; i++) {
+                chunk[i] = data[i];
+            }
+            unpacker.feed(chunk);
+            while ((obj = unpacker.unpack()) !== undefined) {
+                switch (obj[0]) {
+                case 1: // response
+                    id = obj[1];
+                    if (typeof id !== 'number') {
+                        break;
+                    }
+                    if (requests[id] && typeof requests[id].callback === 'function') {
+                        clearTimeout(requests[id].tid);
+                        requests[id].callback({error: obj[2], result: obj[3]});
+                        delete requests[id];
+                    }
+                    break;
+                case 2: // notify
+                    if (that.callbacks && typeof that.callbacks.notify === 'function') {
+                        that.callbacks.notify({method: obj[1], params: obj[2]});
+                    }
+                    break;
+                default:
+                    break;
                 }
             }
         }
@@ -114,45 +151,114 @@ globalScope.msgpack.rpc = {
                 that.callbacks.event(e);
             }
         }
+        function try_connect() {
+            stat = 'connecting';
+            try {
+                sock = new WebSocket(that.uri);
+            } catch (x) {
+                return false;
+            }
+            sock.binaryType = 'arraybuffer';
+            sock.onopen = function(e) {
+                stat = 'connected';
+                recv_event(e);
+            };
+            sock.onclose = sock.onerror = function(e) {
+                stat = 'disconnected';
+                delete sock;
+                recv_event(e);
+            };
+            sock.onmessage = recv_message;
+            return true;
+        }
 
         /**
          * do RPC async
-         * @memberOf globalScope.msgpack.rpc.client.prototype
-         * @param {Hash} rpc
-         * @param {String} rpc.method method name for RPC
-         * @param {Array} rpc.params params for RPC
-         * @param {Function} [rpc.callback]
+         * @methodOf globalScope.msgpack.rpc.client.prototype
+         * @param {Hash} args
+         * @param {String} args.method method name of request
+         * @param {Array} args.params params of request
+         * @param {Function} [args.callback]
          * called this function when received response<br>
-         * @param {Number} [rpc.timeout]
+         * @param {Number} [args.timeout]
          * timeout time[ms], default 30000 ms
          * @see #event:response_callback
          */
-         that.call_async = function(rpc) {
+        that.call_async = function(args) {
             msgid = (msgid == 0x0ffffffff) ? 0 : msgid + 1;
-            if (!connected || typeof requests[msgid] !== 'undefined') {
+            if (stat === 'connecting' || typeof requests[msgid] !== 'undefined') {
                 setTimeout(function() {
-                               that.call_async(rpc);
-                           }, 50);
+                               that.call_async(args);
+                           }, 10);
                 return;
             }
-            send_request(msgid, rpc);
+            if (stat === 'connected') {
+                send_request(msgid, args);
+            }
         };
+        /**
+         * send notify async
+         * @methodOf globalScope.msgpack.rpc.client.prototype
+         * @param {Hash} args
+         * @param {String} args.method method name of notify
+         * @param {Array} args.params params of notify
+         */
+        that.notify = function(args) {
+            switch (stat) {
+            case 'connecting':
+                setTimeout(function() {
+                               that.notify(args);
+                           }, 10);
+                break;
+            case 'connected':
+                send_notify(args);
+                break;
+            default:
+                break;
+            }
+        };
+        /**
+         * resume client work
+         * @methodOf globalScope.msgpack.rpc.client.prototype
+         * @return {Boolean} success to resume or not
+         */
+        that.resume = function() {
+            if (stat === 'connecting' || stat === 'connected') {
+                return true;
+            }
+            if (stat === 'disconnecting') {
+                setTimeout(that.resume, 1);
+                return true;
+            }
+            return try_connect();
+        };
+        /**
+         * suspend client work
+         * @methodOf globalScope.msgpack.rpc.client.prototype
+         */
+        that.suspend = function() {
+            stat = 'disconnecting';
+            for (var id in requests) {
+                clearTimeout(requests[id].tid);
+                delete requests[id];
+            }
+            sock.close();
+            msgid = -1;
+        };
+        /**
+         * delete client
+         * @methodOf globalScope.msgpack.rpc.client.prototype
+         */
+        that.delete = that.suspend;
 
         // initialize
-        try {
-            sock = new WebSocket(uri);   
-        } catch (x) {
+        that.uri = uri;
+        that.callbacks = callbacks;
+        if (!try_connect()) {
             return undefined;
         }
-        sock.binaryType = 'arraybuffer';
-        sock.onopen = function(e) {
-            connected = true;
-            recv_event(e);
-        };
-        sock.onclose = sock.onerror = recv_event;
-        sock.onmessage = recv_message;
-        that.callbacks = callbacks;
         return that;
+
         /**
          * fire when receive websocket event message
          * @name globalScope.msgpack.rpc.client#event_callback
@@ -171,7 +277,7 @@ globalScope.msgpack.rpc = {
          */
         /**
          * fire when receive response
-         * @name globalScope.msgpack.rpc.client#responce_callback
+         * @name globalScope.msgpack.rpc.client#response_callback
          * @event
          * @param {Hash} r
          * @param {String} r.error

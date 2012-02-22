@@ -264,9 +264,45 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.call_async">that.call_async</a></b>(rpc)
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.call_async">that.call_async</a></b>(args)
 								</div>
 								<div class="description">do RPC async</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.delete">that.delete</a></b>()
+								</div>
+								<div class="description">delete client</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.notify">that.notify</a></b>(args)
+								</div>
+								<div class="description">send notify async</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.resume">that.resume</a></b>()
+								</div>
+								<div class="description">resume client work</div>
+							</td>
+						</tr>
+					
+						<tr>
+							<td class="attributes">&nbsp;</td>
+							<td class="nameDescription">
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#that.suspend">that.suspend</a></b>()
+								</div>
+								<div class="description">suspend client work</div>
 							</td>
 						</tr>
 					
@@ -311,7 +347,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 						<tr>
 							<td class="attributes">&nbsp;</td>
 							<td class="nameDescription">
-								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#event:responce_callback">responce_callback</a></b>(r)
+								<div class="fixedFont"><b><a href="../symbols/globalScope.msgpack.rpc.client.html#event:response_callback">response_callback</a></b>(r)
 								</div>
 								<div class="description">fire when receive response</div>
 							</td>
@@ -347,11 +383,11 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 				
 				<pre class="code">(function() {
   function notify_callback(e) {
-    console.log(JSON.stringify(e));   
+    console.log(JSON.stringify(e));
   }
 
   function event_callback(e) {
-    console.log(JSON.stringify(e));   
+    console.log(JSON.stringify(e));
   }
 
   function responce_callback_1(r) {
@@ -365,7 +401,8 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
   var client = new msgpack.rpc.client('ws://host:port/msgpack-rpc',
                                       {'notify': notify_callback,
                                        'event': event_callback});
-  // non-block
+
+  // non-block call
   client.call_async({'method': 'foo',
                      'params': [-1, "string", {'key': 'val'}],
                      'callback': response_callback_1,
@@ -374,6 +411,19 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
                      'params': [-1, "string", {'key': 'val'}],
                      'callback': response_callback_2,
                      'timeout': 10000});
+
+  // non-block notify
+  client.notify({method: 'foo', params: ['bar', 'baz']});
+
+  // suspend client work
+  client.suspend();
+
+  // resume client work if needed
+  client.resume();
+
+  // delete client completely
+  client.delete();
+  delete client;
 })();</pre>
 				
 				
@@ -448,7 +498,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 					<div class="fixedFont">
 					
 					
-					<b>that.call_async</b>(rpc)
+					<b>that.call_async</b>(args)
 					
 					</div>
 					<div class="description">
@@ -464,31 +514,31 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 							<dt class="heading">Parameters:</dt>
 							
 								<dt>
-									<span class="light fixedFont">{Hash}</span> <b>rpc</b>
+									<span class="light fixedFont">{Hash}</span> <b>args</b>
 									
 								</dt>
 								<dd></dd>
 							
 								<dt>
-									<span class="light fixedFont">{String}</span> <b>rpc.method</b>
+									<span class="light fixedFont">{String}</span> <b>args.method</b>
 									
 								</dt>
-								<dd>method name for RPC</dd>
+								<dd>method name of request</dd>
 							
 								<dt>
-									<span class="light fixedFont">{Array}</span> <b>rpc.params</b>
+									<span class="light fixedFont">{Array}</span> <b>args.params</b>
 									
 								</dt>
-								<dd>params for RPC</dd>
+								<dd>params of request</dd>
 							
 								<dt>
-									<span class="light fixedFont">{Function}</span> <b>rpc.callback</b>
+									<span class="light fixedFont">{Function}</span> <b>args.callback</b>
 									<i>Optional</i>
 								</dt>
 								<dd>called this function when received response<br></dd>
 							
 								<dt>
-									<span class="light fixedFont">{Number}</span> <b>rpc.timeout</b>
+									<span class="light fixedFont">{Number}</span> <b>args.timeout</b>
 									<i>Optional</i>
 								</dt>
 								<dd>timeout time[ms], default 30000 ms</dd>
@@ -504,9 +554,139 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 							<dl class="detailList">
 							<dt class="heading">See:</dt>
 							
-								<dd>#event:response_callback</dd>
+								<dd><a href="../symbols/globalScope.msgpack.rpc.client.html#event:response_callback">#event:response_callback</a></dd>
 							
 							</dl>
+						
+
+					<hr />
+				
+					<a name="that.delete"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>that.delete</b>()
+					
+					</div>
+					<div class="description">
+						delete client
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="that.notify"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>that.notify</b>(args)
+					
+					</div>
+					<div class="description">
+						send notify async
+						
+						
+					</div>
+					
+					
+					
+						
+							<dl class="detailList">
+							<dt class="heading">Parameters:</dt>
+							
+								<dt>
+									<span class="light fixedFont">{Hash}</span> <b>args</b>
+									
+								</dt>
+								<dd></dd>
+							
+								<dt>
+									<span class="light fixedFont">{String}</span> <b>args.method</b>
+									
+								</dt>
+								<dd>method name of notify</dd>
+							
+								<dt>
+									<span class="light fixedFont">{Array}</span> <b>args.params</b>
+									
+								</dt>
+								<dd>params of notify</dd>
+							
+							</dl>
+						
+						
+						
+						
+						
+						
+						
+
+					<hr />
+				
+					<a name="that.resume"> </a>
+					<div class="fixedFont">
+					
+					<span class="light">{Boolean}</span>
+					<b>that.resume</b>()
+					
+					</div>
+					<div class="description">
+						resume client work
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+							<dl class="detailList">
+							<dt class="heading">Returns:</dt>
+							
+								<dd><span class="light fixedFont">{Boolean}</span> success to resume or not</dd>
+							
+							</dl>
+						
+						
+						
+
+					<hr />
+				
+					<a name="that.suspend"> </a>
+					<div class="fixedFont">
+					
+					
+					<b>that.suspend</b>()
+					
+					</div>
+					<div class="description">
+						suspend client work
+						
+						
+					</div>
+					
+					
+					
+						
+						
+						
+						
+						
+						
 						
 
 					
@@ -610,11 +790,11 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 
 					<hr />
 				
-					<a name="event:responce_callback"> </a>
+					<a name="event:response_callback"> </a>
 					<div class="fixedFont">
 					
 					
-					<b>responce_callback</b>(r)
+					<b>response_callback</b>(r)
 					
 					</div>
 					<div class="description">
@@ -667,7 +847,7 @@ http://wiki.msgpack.org/display/MSGPACK/RPC+specification
 <!-- ============================== footer ================================= -->
 		<div class="fineprint" style="clear:both">
 			
-			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Tue Feb 21 2012 13:12:59 GMT+0900 (JST)
+			Documentation generated by <a href="http://code.google.com/p/jsdoc-toolkit/" target="_blank">JsDoc Toolkit</a> 2.4.0 on Wed Feb 22 2012 11:08:44 GMT+0900 (JST)
 		</div>
 	</body>
 </html>
