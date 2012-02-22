@@ -116,12 +116,9 @@ globalScope.msgpack.rpc = {
             send(data);
         }
         function recv_message(e) {
-            var chunk = [], obj, id;
-            var data = new Uint8Array(e.data);
+            var obj, id;
+            var chunk = String.fromCharCode.apply(null, new Uint8Array(e.data));
 
-            for (var i = 0; i < data.length; i++) {
-                chunk[i] = data[i];
-            }
             unpacker.feed(chunk);
             while ((obj = unpacker.unpack()) !== undefined) {
                 switch (obj[0]) {
