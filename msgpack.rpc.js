@@ -156,6 +156,7 @@ globalScope.msgpack.rpc = {
             try {
                 sock = new WebSocket(that.uri);
             } catch (x) {
+                stat = 'disconnected';
                 return false;
             }
             sock.binaryType = 'arraybuffer';
