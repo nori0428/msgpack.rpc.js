@@ -70,8 +70,10 @@ globalScope.msgpack.rpc = {
 };
 
 function msgpackclient(uri, callbacks) {
+    var WRITEBUF_MAX = 65536; // for Firefox
     var sock, msgid = -1;
     var requests = {}, that = {}, unpacker = new msgpack.unpacker();
+    var buffer = [];
 
     function timeout_request(id) {
         if (requests[id] && typeof requests[id].callback === 'function') {
@@ -79,14 +81,18 @@ function msgpackclient(uri, callbacks) {
             delete requests[id];
         }
     }
+    function flush() {
+        for (var i = 0; i < buffer.length; i++) {
+            sock.send(buffer[i]);
+        }
+        buffer = [];
+    }
     function send(data) {
         // connected state
-        if (sock.readyState === 1 && sock.bufferedAmount == 0) {
+        if (sock.readyState === 1 && sock.bufferedAmount <= WRITEBUF_MAX) {
             sock.send(data.buffer);
         } else {
-            setTimeout(function() {
-                           send(data);
-                       }, 0);
+            buffer.push(data.buffer);
         }
     }
     function send_request(id, args) {
@@ -158,6 +164,7 @@ function msgpackclient(uri, callbacks) {
         }
         sock.binaryType = 'arraybuffer';
         sock.onopen = function(e) {
+            flush();
             recv_event(e);
         };
         sock.onclose = sock.onerror = function(e) {
