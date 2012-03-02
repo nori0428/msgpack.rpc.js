@@ -70,7 +70,6 @@ globalScope.msgpack.rpc = {
 };
 
 function msgpackclient(uri, callbacks) {
-    var WRITEBUF_MAX = 65536; // for Firefox
     var sock, msgid = -1;
     var requests = {}, that = {}, unpacker = new msgpack.unpacker();
     var buffer = [];
@@ -82,17 +81,18 @@ function msgpackclient(uri, callbacks) {
         }
     }
     function flush() {
-        for (var i = 0; i < buffer.length; i++) {
+        var n = buffer.length;
+        for (var i = 0; i < n; i++) {
             sock.send(buffer[i]);
         }
         buffer = [];
     }
     function send(data) {
         // connected state
-        if (sock.readyState === 1 && sock.bufferedAmount <= WRITEBUF_MAX) {
+        if (sock.readyState === 1) {
             sock.send(data.buffer);
         } else {
-            buffer.push(data.buffer);
+            buffer[buffer.length] = data.buffer;
         }
     }
     function send_request(id, args) {
