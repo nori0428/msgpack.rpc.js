@@ -167,11 +167,7 @@ function msgpackclient(uri, callbacks) {
             flush();
             recv_event(e);
         };
-        sock.onclose = sock.onerror = function(e) {
-            delete sock;
-            sock = undefined;
-            recv_event(e);
-        };
+        sock.onclose = sock.onerror = recv_event;
         sock.onmessage = recv_message;
         return true;
     }
@@ -256,7 +252,7 @@ function msgpackclient(uri, callbacks) {
      * delete client
      * @methodOf globalScope.msgpack.rpc.client.prototype
      */
-    that.delete = that.suspend;
+    that.disconnect = that.suspend;
 
     // initialize
     that.uri = uri;
