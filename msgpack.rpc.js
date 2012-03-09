@@ -125,8 +125,12 @@ function msgpackclient(uri, callbacks) {
     }
     function recv_message(e) {
         var obj, id;
-        var chunk = String.fromCharCode.apply(null, new Uint8Array(e.data));
+        var ary = new Uint8Array(e.data);
+        var chunk = [];
 
+        for (var i = 0, l = ary.length; i < l; i++) {
+            chunk[i] = ary[i];
+        }
         unpacker.feed(chunk);
         while ((obj = unpacker.unpack()) !== undefined) {
             switch (obj[0]) {
