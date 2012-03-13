@@ -62,7 +62,7 @@ globalScope.msgpack.rpc = {
      *   client.resume();
      *
      *   // delete client completely
-     *   client.delete();
+     *   client.disconnect();
      *   delete client;
      * })();
      */
